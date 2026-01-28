@@ -1,0 +1,102 @@
+# Ambient Data Analyst — Cursor Rules (Backend)
+
+You are working in a Python/FastAPI backend repo. The goal is an industry-level, scalable codebase built incrementally. Keep changes small, reviewable, and aligned with the current structure.
+
+## 0) Non-negotiables (always)
+1. Small diffs only. Do not refactor unrelated files. Do not rename folders/modules unless explicitly asked.
+2. No architecture drift. Follow the current folder structure. If something is missing, add minimal files in the existing structure.
+3. Be explicit, not clever. Prefer readable code over abstractions/magic.
+4. No new dependencies unless explicitly requested.
+5. No “feature build-out” early. Implement only what the user asked for in the current step.
+
+## 1) Scope discipline
+- If the user asks for a single milestone, implement ONLY that milestone.
+- If more work is needed, propose it in text but do NOT implement it unless asked.
+- Prefer touching <= 5 files for Phase-0 tasks; >5 requires a short justification.
+
+## 2) Project structure rules (do not change without request)
+- backend/app/main.py = composition root (create app, install middleware, include routers)
+- backend/app/api/ = routing layer + versioning (internal, v1)
+- backend/app/core/ = cross-cutting concerns (config, logging, middleware, errors)
+- backend/app/db/ = SQLAlchemy engine/session/base + model registry
+- backend/app/shared/ = generic helpers/types/constants (no business logic)
+- backend/app/features/ = future feature modules (do not add features unless asked)
+- backend/scripts/ = scripts (seed/maintenance)
+- backend/tests/ = tests
+
+## 3) Imports & execution convention (keep consistent)
+- Use absolute imports rooted at `app.*` (example: `from app.core.config.settings import settings`).
+- Do not introduce `backend.app.*` imports unless the user explicitly requests that convention.
+
+## 4) MVC-style conventions (Node.js-like feel)
+When feature modules are added later:
+- Controllers = FastAPI routers (thin)
+- Views = Pydantic schemas (request/response)
+- Models = SQLAlchemy ORM models
+- Services = business logic
+- Repos = DB queries
+
+For NOW (Phase-0), avoid creating feature modules unless asked.
+
+## 5) Layering and dependency rules
+- API layer must not perform DB queries directly.
+- DB access must go through `db/session.py` and later repos.
+- core/ must not import from feature modules (avoid circular dependencies).
+- shared/ must not import FastAPI or SQLAlchemy (keep it dependency-light).
+
+## 6) Configuration rules
+- Configuration comes from env via `core/config/settings.py`.
+- Never hardcode secrets. Never commit credentials.
+- Assume multi-env (.env.dev/.env.sandbox/.env.prod) will exist; keep settings flexible.
+
+## 7) Error handling & response shape
+- Prefer consistent error responses via `core/errors/handlers.py`.
+- If adding new endpoints, keep response shape consistent.
+- Do not invent complex envelope formats unless asked.
+
+## 8) Middleware rules
+- Middleware lives under `core/middleware/`.
+- Middleware must be minimal, deterministic, and easy to test.
+- If adding request-id, propagate `X-Request-ID` header.
+
+## 9) DB & migrations rules
+- DB plumbing only in `db/session.py` and `db/base.py`.
+- Do not run migrations automatically on startup unless explicitly asked.
+- Alembic stays in `backend/alembic/`.
+
+## 10) Docker rules
+- Backend Dockerfile location is `backend/docker/Dockerfile`.
+- Do not create or reintroduce `backend/Dockerfile` unless explicitly requested.
+- Do not change docker-compose service names/ports unless requested.
+
+## 11) Future non-negotiables (DO NOT implement until asked)
+These are required later, but do not implement them now unless requested:
+- Multi-tenant isolation
+- Strict RBAC
+- KPI layer
+- Evidence sets
+- LangGraph orchestration
+
+When the user asks to add them:
+- add them incrementally,
+- avoid sweeping refactors,
+- keep boundaries and layering intact.
+
+## 12) Testing rules
+- Add tests only when behavior changes, and only for the files you touched.
+- Prefer pytest tests that are fast and deterministic.
+- Keep unit tests in backend/tests/unit/, integration tests in backend/tests/integration/.
+
+## 13) Output / delivery rules (every time you generate code)
+At the end of any change, provide:
+1) Files changed (list)
+2) How to run (commands)
+3) Expected output (what the user should see)
+4) Rollback note (if risky; otherwise “no rollback needed”)
+
+## 14) Safety and sanity checks
+Before finalizing:
+- Confirm imports won’t break (package paths)
+- Confirm no circular imports introduced
+- Confirm no unused files created
+- Confirm change matches current milestone only
