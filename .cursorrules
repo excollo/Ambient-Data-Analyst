@@ -1,102 +1,166 @@
 # Ambient Data Analyst — Cursor Rules (Backend)
 
-You are working in a Python/FastAPI backend repo. The goal is an industry-level, scalable codebase built incrementally. Keep changes small, reviewable, and aligned with the current structure.
+You are working in a Python/FastAPI backend repo. The goal is an industry-level, scalable codebase built incrementally. Keep changes small, reviewable, and aligned with the current structure and security requirements.
+
+---
 
 ## 0) Non-negotiables (always)
-1. Small diffs only. Do not refactor unrelated files. Do not rename folders/modules unless explicitly asked.
-2. No architecture drift. Follow the current folder structure. If something is missing, add minimal files in the existing structure.
-3. Be explicit, not clever. Prefer readable code over abstractions/magic.
-4. No new dependencies unless explicitly requested.
-5. No “feature build-out” early. Implement only what the user asked for in the current step.
+1. **Small diffs only.** Do not refactor unrelated files. Do not rename folders/modules unless explicitly asked.
+2. **No architecture drift.** Follow the current folder structure. If something is missing, add minimal files in the existing structure.
+3. **Be explicit, not clever.** Prefer readable code over abstractions/magic.
+4. **No new dependencies** unless explicitly requested **or required for security correctness** (see Auth rules).
+5. **No “feature build-out” early.** Implement only what the user asked for in the current step.
+
+---
 
 ## 1) Scope discipline
-- If the user asks for a single milestone, implement ONLY that milestone.
-- If more work is needed, propose it in text but do NOT implement it unless asked.
-- Prefer touching <= 5 files for Phase-0 tasks; >5 requires a short justification.
+- If the user asks for a single milestone, implement **ONLY** that milestone.
+- If more work is needed, propose it in text but **do NOT implement** it unless asked.
+- Prefer touching **<= 5 files** for Phase-0 tasks; **>5 requires a short justification** (why it’s necessary).
+
+---
 
 ## 2) Project structure rules (do not change without request)
-- backend/app/main.py = composition root (create app, install middleware, include routers)
-- backend/app/api/ = routing layer + versioning (internal, v1)
-- backend/app/core/ = cross-cutting concerns (config, logging, middleware, errors)
-- backend/app/db/ = SQLAlchemy engine/session/base + model registry
-- backend/app/shared/ = generic helpers/types/constants (no business logic)
-- backend/app/features/ = future feature modules (do not add features unless asked)
-- backend/scripts/ = scripts (seed/maintenance)
-- backend/tests/ = tests
+- `backend/app/main.py` = composition root (create app, install middleware, include routers)
+- `backend/app/api/` = routing layer + versioning (internal, v1)
+- `backend/app/core/` = cross-cutting concerns (config, logging, middleware, errors)
+- `backend/app/db/` = SQLAlchemy engine/session/base + model registry + models
+- `backend/app/shared/` = generic helpers/types/constants (**no business logic**)
+- `backend/app/features/` = future feature modules (do not add features unless asked)
+- `backend/scripts/` = scripts (seed/maintenance)
+- `backend/tests/` = tests
+
+---
 
 ## 3) Imports & execution convention (keep consistent)
 - Use absolute imports rooted at `app.*` (example: `from app.core.config.settings import settings`).
 - Do not introduce `backend.app.*` imports unless the user explicitly requests that convention.
+- Avoid circular imports: `core/` must not import from future feature modules.
+
+---
 
 ## 4) MVC-style conventions (Node.js-like feel)
 When feature modules are added later:
-- Controllers = FastAPI routers (thin)
-- Views = Pydantic schemas (request/response)
-- Models = SQLAlchemy ORM models
-- Services = business logic
-- Repos = DB queries
+- **Controllers** = FastAPI routers (thin)
+- **Views** = Pydantic schemas (request/response)
+- **Models** = SQLAlchemy ORM models
+- **Services** = business logic
+- **Repos** = DB queries
 
-For NOW (Phase-0), avoid creating feature modules unless asked.
+For NOW (foundation), avoid creating large feature modules unless asked.
 
-## 5) Layering and dependency rules
+---
+
+## 5) Layering and dependency rules (strict)
 - API layer must not perform DB queries directly.
-- DB access must go through `db/session.py` and later repos.
-- core/ must not import from feature modules (avoid circular dependencies).
-- shared/ must not import FastAPI or SQLAlchemy (keep it dependency-light).
+- DB access must go through `db/session.py` and later repos/helpers.
+- `core/` must not import from feature modules (avoid circular dependencies).
+- `shared/` must not import FastAPI or SQLAlchemy (keep it dependency-light).
+
+---
 
 ## 6) Configuration rules
 - Configuration comes from env via `core/config/settings.py`.
 - Never hardcode secrets. Never commit credentials.
-- Assume multi-env (.env.dev/.env.sandbox/.env.prod) will exist; keep settings flexible.
+- Assume multi-env `.env.dev/.env.sandbox/.env.prod` exist; keep settings flexible.
+- Do not embed environment selection logic into random files; keep config centralized.
+
+---
 
 ## 7) Error handling & response shape
 - Prefer consistent error responses via `core/errors/handlers.py`.
-- If adding new endpoints, keep response shape consistent.
+- If adding new endpoints, keep response shape consistent with what exists.
 - Do not invent complex envelope formats unless asked.
+
+---
 
 ## 8) Middleware rules
 - Middleware lives under `core/middleware/`.
 - Middleware must be minimal, deterministic, and easy to test.
-- If adding request-id, propagate `X-Request-ID` header.
+- Request ID:
+  - accept incoming `X-Request-ID` or generate one
+  - return `X-Request-ID` in response headers
+
+---
 
 ## 9) DB & migrations rules
 - DB plumbing only in `db/session.py` and `db/base.py`.
 - Do not run migrations automatically on startup unless explicitly asked.
 - Alembic stays in `backend/alembic/`.
+- Model registration for autogenerate should be done in `db/models/__init__.py` (explicit imports).
+
+---
 
 ## 10) Docker rules
 - Backend Dockerfile location is `backend/docker/Dockerfile`.
 - Do not create or reintroduce `backend/Dockerfile` unless explicitly requested.
 - Do not change docker-compose service names/ports unless requested.
 
-## 11) Future non-negotiables (DO NOT implement until asked)
-These are required later, but do not implement them now unless requested:
-- Multi-tenant isolation
-- Strict RBAC
-- KPI layer
-- Evidence sets
-- LangGraph orchestration
+---
 
-When the user asks to add them:
-- add them incrementally,
-- avoid sweeping refactors,
-- keep boundaries and layering intact.
+## 11) Tenant rules (already foundation-critical)
+- Tenant is identified by **`X-Tenant-ID` header** (slug).
+- Tenant resolution must:
+  - return 400 if missing header (for tenant-required endpoints)
+  - return 404 if tenant not found
+  - store `tenant_slug` and `tenant_id` on `request.state`
+- Any DB access for tenant-scoped tables must require `tenant_id` (no accidental cross-tenant queries).
 
-## 12) Testing rules
+---
+
+## 12) Auth & RBAC security rules (when implementing auth/rbac)
+These are mandatory when auth/rbac work begins.
+
+### 12.1 Security correctness (no DIY security)
+1) Never log or return secrets: passwords, tokens, verification codes, reset codes, full DATABASE_URL.
+2) Do not implement custom cryptography or hashing. Use established libraries.
+3) Auth failure responses must not enable user enumeration (avoid “email exists” vs “email not found” leaks).
+
+### 12.2 Dependencies for auth (controlled)
+- If a dependency is required for security correctness (e.g., password hashing / JWT):
+  - propose **exactly 1 option** and proceed only if user approves, unless user already approved it.
+  - do not add multiple competing libraries.
+
+### 12.3 Token / identity must be tenant-bound
+- Tokens must encode or bind to `tenant_id` + `user_id`.
+- Resolved tenant (from `X-Tenant-ID`) must match token tenant (deny if mismatch).
+- No “header-only tenant switching” is allowed once auth is enabled.
+
+### 12.4 Layering for auth/rbac
+- Routers/controllers stay thin. No auth logic inside routers.
+- Auth/RBAC logic must live in a service module (e.g., `app/core/security/*` + `services/auth_service.py` later).
+- DB reads/writes for users/roles/permissions must go through repo/query helpers.
+
+### 12.5 Email verification rules (when implemented)
+- Verification tokens must be:
+  - single-use
+  - time-limited (expiry)
+  - stored hashed (not plaintext)
+- Email sending must be via an interface/adapter, not hardcoded SMTP logic everywhere.
+- Rate-limit resend endpoints (minimal approach is fine).
+
+---
+
+## 13) Testing rules
 - Add tests only when behavior changes, and only for the files you touched.
 - Prefer pytest tests that are fast and deterministic.
-- Keep unit tests in backend/tests/unit/, integration tests in backend/tests/integration/.
+- Keep unit tests in `backend/tests/unit/`, integration tests in `backend/tests/integration/`.
 
-## 13) Output / delivery rules (every time you generate code)
+---
+
+## 14) Output / delivery rules (every time you generate code)
 At the end of any change, provide:
-1) Files changed (list)
-2) How to run (commands)
-3) Expected output (what the user should see)
-4) Rollback note (if risky; otherwise “no rollback needed”)
+1) **Files changed** (list)
+2) **How to run** (commands)
+3) **Expected output** (what the user should see)
+4) **Rollback note** (if risky; otherwise “no rollback needed”)
 
-## 14) Safety and sanity checks
-Before finalizing:
+---
+
+## 15) Safety and sanity checks (before finalizing)
 - Confirm imports won’t break (package paths)
 - Confirm no circular imports introduced
 - Confirm no unused files created
-- Confirm change matches current milestone only
+- Confirm change matches the current milestone only
+- Confirm tenant scoping is not bypassed for tenant-scoped data
+- For auth work: confirm no secrets or tokens are printed in logs or responses
