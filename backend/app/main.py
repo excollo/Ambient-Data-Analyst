@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from app.api.router import api_router
 from app.core.middleware.request_id import RequestIDMiddleware
 from app.core.config.settings import settings
+from app.core.errors.handlers import register_exception_handlers
 import logging
 
 logger = logging.getLogger("ambient.env")
@@ -27,6 +28,9 @@ def _redact_db_url(url: str) -> str:
 def create_app() -> FastAPI:
     """Application factory used for both runtime and testing."""
     app = FastAPI()
+
+    # Error handlers
+    register_exception_handlers(app)
 
     # Middleware
     app.add_middleware(RequestIDMiddleware)
