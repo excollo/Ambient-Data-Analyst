@@ -1,2 +1,9 @@
-# Database base configuration and declarative base
+"""Database base configuration and declarative base."""
 
+from __future__ import annotations
+
+from sqlalchemy.orm import DeclarativeBase
+
+
+class Base(DeclarativeBase):
+    pass
