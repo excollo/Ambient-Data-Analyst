@@ -10,7 +10,8 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.internal.routes import router as internal_router
-from app.api.v1.routes import router as v1_router
+from app.api.v1.auth.routes import router as auth_router
+from app.api.v1.router import v1_router
 
 
 api_router = APIRouter()
@@ -19,6 +20,7 @@ api_router = APIRouter()
 api_router.include_router(internal_router, prefix="/internal", tags=["internal"])
 
 # Public versioned API
+api_router.include_router(auth_router, prefix="/v1/auth", tags=["auth"])
 api_router.include_router(v1_router, prefix="/v1", tags=["v1"])
 
 

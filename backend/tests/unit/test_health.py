@@ -22,3 +22,10 @@ def test_v1_health() -> None:
     assert response.headers["X-Request-ID"]
 
 
+def test_tenant_required_returns_400_without_header() -> None:
+    """Tenant middleware blocks /internal/tenant when X-Tenant-ID is missing."""
+    response = client.get("/internal/tenant")
+    assert response.status_code == 400
+    assert response.json()["detail"] == "X-Tenant-ID header required"
+
+

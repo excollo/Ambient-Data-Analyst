@@ -3,7 +3,7 @@ Request ID middleware for request tracking.
 
 If the incoming request has an ``X-Request-ID`` header, it is preserved.
 Otherwise a new UUID4 is generated. The final ID is attached to the response
-as ``X-Request-ID``.
+as ``X-Request-ID``. Also sets the logging context var for request_id-aware logs.
 """
 
 from __future__ import annotations
@@ -13,6 +13,8 @@ from typing import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.core.logging.setup import request_id_ctx
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
@@ -29,11 +31,14 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         if not request_id:
             request_id = str(uuid.uuid4())
 
-        # Make the request ID available on the request state for downstream use.
         request.state.request_id = request_id  # type: ignore[attr-defined]
 
-        response = await call_next(request)
-        response.headers[self.header_name] = request_id
-        return response
+        token = request_id_ctx.set(request_id)
+        try:
+            response = await call_next(request)
+            response.headers[self.header_name] = request_id
+            return response
+        finally:
+            request_id_ctx.reset(token)
 
 

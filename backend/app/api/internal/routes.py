@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -10,11 +12,13 @@ from app.db.session import get_db
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/healthz", summary="Internal health check")
 async def healthz() -> dict[str, str]:
     """Simple internal health check endpoint."""
+    logger.info("Health check")
     return {"status": "ok"}
 
 

@@ -15,7 +15,7 @@ from alembic import context
 from sqlalchemy import Connection, engine_from_config, pool
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from app.db import models  # noqa: F401  # Ensure models are imported for metadata discovery
+from app.db.models import Tenant, User  # noqa: F401  # Ensure models are imported for metadata discovery
 from app.db.base import Base
 
 # Alembic Config object, providing access to values in alembic.ini.

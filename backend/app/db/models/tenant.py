@@ -24,6 +24,9 @@ class Tenant(Base):
     )
     slug: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(length=255), nullable=False)
+    primary_domain: Mapped[str | None] = mapped_column(
+        String(length=255), unique=True, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
